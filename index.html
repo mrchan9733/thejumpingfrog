@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>進階磁力視覺實驗室 - 陳奇恩老師設計</title>
+    <title>磁力跳躍蛙 - 磁力的探究 - 陳奇恩老師設計 Magnetic Jumping Frog - Exploring Magnetism - Designed by Mr ChanKY</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -102,6 +102,7 @@
             font-size: 14px;
             font-weight: bold;
             letter-spacing: 1px;
+            line-height: 1.5;
         }
 
         /* === 核心：幾何3D立體角色 CSS === */
@@ -137,6 +138,16 @@
         .geometry-tortoise .tortoise-leg { position: absolute; bottom: -3px; width: 15px; height: 18px; background: linear-gradient(to bottom, #388e3c, #1b5e20); border-radius: 8px 8px 3px 3px; box-shadow: 0 3px 3px rgba(0,0,0,0.4); z-index: -1; }
         .geometry-tortoise .tortoise-leg::after { content: ''; position: absolute; bottom: 2px; left: 2px; width: calc(100% - 4px); height: 5px; background-color: rgba(0, 0, 0, 0.3); border-radius: 2px; }
         .geometry-tortoise .tortoise-leg-front { left: 12px; transform: rotate(5deg); } .geometry-tortoise .tortoise-leg-back { right: 12px; transform: rotate(-5deg); }
+        
+        /* 5. 🐶 小狗 */
+        .geometry-dog { position: relative; width: 70px; height: 55px; background: radial-gradient(circle at 50% 40%, #d7ccc8 0%, #a1887f 70%, #6d4c41 100%); border-radius: 40% 40% 15px 15px; box-shadow: inset 0 -5px 10px rgba(0,0,0,0.2), 0 4px 6px rgba(0,0,0,0.3); }
+        .geometry-dog .dog-ear { position: absolute; top: 5px; width: 22px; height: 35px; background: linear-gradient(to bottom, #795548, #4e342e); border-radius: 50% 50% 10px 10px; box-shadow: 0 2px 3px rgba(0,0,0,0.3); z-index: -1; }
+        .geometry-dog .dog-ear-left { left: -8px; transform: rotate(-25deg); } .geometry-dog .dog-ear-right { right: -8px; transform: rotate(25deg); }
+        .geometry-dog .dog-eye { position: absolute; top: 22px; width: 8px; height: 8px; background-color: #212121; border-radius: 50%; }
+        .geometry-dog .dog-eye-left { left: 16px; } .geometry-dog .dog-eye-right { right: 16px; }
+        .geometry-dog .dog-nose { position: absolute; top: 32px; left: 50%; transform: translateX(-50%); width: 14px; height: 10px; background-color: #3e2723; border-radius: 40% 40% 50% 50%; }
+        .geometry-dog .dog-leg { position: absolute; bottom: 5px; width: 14px; height: 14px; background: linear-gradient(to bottom, #8d6e63, #5d4037); border-radius: 8px 8px 4px 4px; box-shadow: 0 2px 2px rgba(0,0,0,0.3); }
+        .geometry-dog .dog-leg-left { left: 10px; } .geometry-dog .dog-leg-right { right: 10px; }
     </style>
 </head>
 <body>
@@ -170,6 +181,7 @@
                 <option value="car">跑車</option>
                 <option value="rocket">火箭</option>
                 <option value="tortoise">盾臂龜</option>
+                <option value="dog">小狗</option>
             </select>
         </div>
 
@@ -198,7 +210,7 @@
         </div>
 
         <div id="author-footer">
-            程式設計者：陳奇恩老師
+            程式設計者：陳奇恩老師<br><br>Designed by Mr. ChanKY
         </div>
     </div>
 
@@ -245,7 +257,9 @@
             'frog': { name: '跳跳蛙', color: '#4caf50', cssClass: 'geometry-frog', innerHtml: '<div class="frog-eye-pupil pupil-left"></div><div class="frog-eye-pupil pupil-right"></div><div class="frog-leg frog-leg-left"></div><div class="frog-leg frog-leg-right"></div>' },
             'car': { name: '跑車', color: '#e53935', cssClass: 'geometry-car', innerHtml: '<div class="car-window"></div>' },
             'rocket': { name: '火箭', color: '#607d8b', cssClass: 'geometry-rocket', innerHtml: '<div class="rocket-fin rocket-fin-left"></div><div class="rocket-fin rocket-fin-right"></div><div class="rocket-nozzle"></div>' },
-            'tortoise': { name: '盾臂龜', color: '#2e7d32', cssClass: 'geometry-tortoise', innerHtml: '<div class="tortoise-head"></div><div class="tortoise-leg tortoise-leg-front"></div><div class="tortoise-leg tortoise-leg-back"></div>' }
+            'tortoise': { name: '盾臂龜', color: '#2e7d32', cssClass: 'geometry-tortoise', innerHtml: '<div class="tortoise-head"></div><div class="tortoise-leg tortoise-leg-front"></div><div class="tortoise-leg tortoise-leg-back"></div>' },
+            // ★ 新增的小狗資料
+            'dog': { name: '小狗', color: '#a1887f', cssClass: 'geometry-dog', innerHtml: '<div class="dog-ear dog-ear-left"></div><div class="dog-ear dog-ear-right"></div><div class="dog-eye dog-eye-left"></div><div class="dog-eye dog-eye-right"></div><div class="dog-nose"></div><div class="dog-leg dog-leg-left"></div><div class="dog-leg dog-leg-right"></div>' }
         };
 
         const GRAVITY = 0.6; const MAGNETIC_K = 6000; const DAMPING = 0.94; const THICKNESS = 24; const BASE_Y = 30;       
@@ -269,7 +283,8 @@
                 const topConfigDiv = topLabel.parentElement;
                 if(topConfigDiv) {
                     topConfigDiv.style.border = `2px solid ${data.color}`;
-                    topConfigDiv.style.backgroundColor = selectedType === 'tortoise' ? '#e8f5e9' : selectedType === 'frog' ? '#e8f5e9' : selectedType === 'car' ? '#ffebee' : '#eceff1';
+                    // 根據角色配色給予淡色背景
+                    topConfigDiv.style.backgroundColor = selectedType === 'tortoise' ? '#e8f5e9' : selectedType === 'frog' ? '#e8f5e9' : selectedType === 'car' ? '#ffebee' : selectedType === 'dog' ? '#efebe9' : '#eceff1';
                 }
             }
         }
@@ -308,7 +323,7 @@
                 let configDiv = document.createElement('div'); configDiv.className = 'magnet-config';
                 if (i === topIndex) {
                     configDiv.style.border = `2px solid ${data.color}`;
-                    configDiv.style.backgroundColor = selectedType === 'tortoise' ? '#e8f5e9' : selectedType === 'frog' ? '#e8f5e9' : selectedType === 'car' ? '#ffebee' : '#eceff1';
+                    configDiv.style.backgroundColor = selectedType === 'tortoise' ? '#e8f5e9' : selectedType === 'frog' ? '#e8f5e9' : selectedType === 'car' ? '#ffebee' : selectedType === 'dog' ? '#efebe9' : '#eceff1';
                 }
                 configDiv.innerHTML = `<span id="label-${i}">${name}</span><button id="btn-${i}" class="${btnClass}" onclick="togglePole(${i})">${btnText}</button>`;
                 settingsArea.appendChild(configDiv);
