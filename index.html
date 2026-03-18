@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>進階磁力視覺實驗室 - 陳奇恩老師設計</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: flex-start;
+            background-color: #e8f4f8;
+            margin: 40px;
+            gap: 30px;
+            /* ★ 防護機制：全面禁止反白選取文字 */
+            user-select: none; 
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+        
+        /* 模擬區 */
+        #simulation-container {
+            position: relative;
+            width: 440px; 
+            height: 650px;
+            background-color: white;
+            border: 3px solid #b0bec5;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+            touch-action: none;
+        }
+        
+        /* === 高度尺 (刻度) === */
+        #height-scale { position: absolute; left: 10px; bottom: 0; width: 40px; height: 100%; border-right: 2px solid #cfd8dc; pointer-events: none; }
+        .scale-mark { position: absolute; right: 0; width: 10px; border-top: 2px solid #90a4ae; }
+        .scale-label { position: absolute; right: 15px; transform: translateY(50%); font-size: 12px; color: #78909c; font-weight: bold; }
+
+        /* 竹籤 */
+        #pole { position: absolute; left: 185px; bottom: 30px; width: 10px; height: 580px; background: linear-gradient(to right, #d7ccc8, #a1887f); border-radius: 5px; }
+        
+        /* 磁鐵 */
+        .magnet { position: absolute; left: 190px; transform: translateX(-50%); width: 60px; height: 24px; border-radius: 4px; display: flex; flex-direction: column; box-shadow: 0 2px 4px rgba(0,0,0,0.4); overflow: hidden; }
+        .magnet-half { width: 100%; height: 50%; display: flex; justify-content: center; align-items: center; color: white; font-weight: bold; font-size: 10px; line-height: 1; }
+        .bg-n { background-color: #e53935; } .bg-s { background-color: #1e88e5; }
+
+        /* === 3D幾何主角容器 === */
+        #avatar-container { position: absolute; left: 190px; transform: translateX(-50%); width: 110px; height: 90px; cursor: grab; z-index: 10; display: flex; justify-content: center; align-items: flex-end; overflow: visible; transition: transform 0.1s linear; }
+        #avatar-container:active { cursor: grabbing; }
+        #avatar-geometry { position: absolute; bottom: 12px; width: 90px; height: 65px; display: flex; justify-content: center; align-items: center; pointer-events: none; }
+        #avatar-base-magnet { position: absolute; bottom: 0; width: 60px; height: 12px; left: 50%; transform: translateX(-50%); display: flex; justify-content: center; align-items: center; color: white; font-size: 10px; font-weight: bold; pointer-events: none; border-radius: 2px; }
+
+        /* 跳躍紀錄線區域 */
+        #records-area { position: absolute; left: 50px; width: 280px; bottom: 0; height: 100%; pointer-events: none; z-index: 5; }
+        .jump-record-line { position: absolute; left: 0; width: 100%; height: 0; border-top: 2px dashed; display: flex; justify-content: flex-end; align-items: flex-start; transition: opacity 0.3s; }
+        .jump-record-badge { transform: translateY(-50%); background-color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); margin-right: -10px; white-space: nowrap; }
+
+        /* 力量計 */
+        #force-label { position: absolute; right: 20px; top: 10px; font-size: 14px; font-weight: bold; color: #546e7a; text-align: center; line-height: 1.2; }
+        #force-meter-wrapper { position: absolute; right: 30px; bottom: 30px; height: 580px; display: flex; gap: 8px; align-items: flex-end; }
+        #scale-marks { height: 100%; display: flex; flex-direction: column-reverse; justify-content: space-between; font-size: 12px; font-weight: bold; color: #546e7a; padding-bottom: 0; text-align: right; }
+        #scale-marks span { line-height: 1; transform: translateY(50%); }
+        #force-meter-container { position: relative; width: 25px; height: 100%; background-color: #eceff1; border: 2px solid #cfd8dc; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
+        #force-bar { width: 100%; height: 0%; background: linear-gradient(to top, #4caf50, #ffeb3b, #f44336); transition: height 0.05s linear; }
+        .meter-lines { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; background: repeating-linear-gradient( to top, transparent, transparent calc(20% - 1.5px), rgba(0, 0, 0, 0.4) calc(20% - 1.5px), rgba(0, 0, 0, 0.4) 20% ); }
+
+        /* 控制面板 */
+        #controls { width: 340px; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
+        h2 { margin-top: 0; color: #333; font-size: 22px; }
+        .control-group { margin-bottom: 20px; }
+        .magnet-config { background: #f5f5f5; padding: 10px; margin-bottom: 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 14px;}
+        button { background: #2196f3; color: white; border: none; padding: 6px 10px; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight:bold; transition: background 0.2s;}
+        button:hover { background: #1976d2; }
+        button.s-btn { background: #f44336; }
+        button.s-btn:hover { background: #d32f2f; }
+        
+        /* 紀錄控制按鈕專區 */
+        .record-controls { display: flex; flex-direction: column; gap: 8px; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #ccc; }
+        .btn-jump { background-color: #9c27b0; width: 100%; font-size: 15px; padding: 10px; margin-bottom: 5px;} 
+        .btn-jump:hover { background-color: #7b1fa2; }
+        .btn-record { background-color: #4caf50; width: 100%; font-size: 15px; padding: 10px;} 
+        .btn-record:hover { background-color: #388e3c; }
+        
+        .sub-btn-group { display: flex; gap: 6px; width: 100%; }
+        .btn-undo { background-color: #ff9800; flex: 1;}
+        .btn-undo:hover { background-color: #f57c00; }
+        .btn-clear { background-color: #9e9e9e; flex: 1;}
+        .btn-clear:hover { background-color: #757575; }
+        .btn-reset { background-color: #607d8b; flex: 1;}
+        .btn-reset:hover { background-color: #455a64; }
+        select { padding: 5px; font-size: 14px; width: 100%; margin-top: 5px; }
+
+        /* 作者標籤 */
+        #author-footer {
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 2px solid #eceff1;
+            text-align: center;
+            color: #546e7a;
+            font-size: 14px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        /* === 核心：幾何3D立體角色 CSS === */
+        /* 1. 🐸 跳跳蛙 */
+        .geometry-frog { position: relative; width: 70px; height: 50px; background: radial-gradient(circle at 50% 30%, #a5d6a7 0%, #4caf50 70%, #1b5e20 100%); border-radius: 50% 50% 15px 15px; box-shadow: inset 0 -5px 10px rgba(0,0,0,0.4), 0 4px 6px rgba(0,0,0,0.3); }
+        .geometry-frog::before, .geometry-frog::after { content: ''; position: absolute; top: -18px; width: 25px; height: 25px; background: white; border: 4px solid #388e3c; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); background-image: radial-gradient(circle at 50% 50%, #fff 20%, #eceff1 60%); }
+        .geometry-frog::before { left: 8px; } .geometry-frog::after { right: 8px; }
+        .geometry-frog .frog-eye-pupil { position: absolute; top: -11px; width: 10px; height: 12px; background-color: black; border-radius: 50%; z-index: 2; }
+        .geometry-frog .pupil-left { left: 19px; } .geometry-frog .pupil-right { right: 19px; }
+        .geometry-frog .frog-eye-pupil::after { content: ''; position: absolute; top: 2px; left: 2px; width: 3px; height: 3px; background-color: white; border-radius: 50%; }
+        .geometry-frog .frog-leg { position: absolute; bottom: 5px; width: 15px; height: 12px; background: linear-gradient(to bottom, #4caf50, #1b5e20); border-radius: 50% 50% 5px 5px; box-shadow: 0 2px 2px rgba(0,0,0,0.3); }
+        .geometry-frog .frog-leg-left { left: -7px; transform: rotate(40deg); } .geometry-frog .frog-leg-right { right: -7px; transform: rotate(-40deg); }
+
+        /* 2. 🚗 跑車 */
+        .geometry-car { position: relative; width: 80px; height: 38px; background: linear-gradient(to bottom, #ef5350 0%, #e53935 60%, #b71c1c 100%); border-radius: 18px 18px 5px 5px; box-shadow: inset 0 2px 5px rgba(255,255,255,0.4), 0 4px 6px rgba(0,0,0,0.3); }
+        .geometry-car::before, .geometry-car::after { content: ''; position: absolute; bottom: -8px; width: 22px; height: 22px; background: radial-gradient(circle at 50% 50%, #757575 0%, #212121 60%, #000 100%); border-radius: 50%; border: 3px solid #cfd8dc; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .geometry-car::before { left: 10px; } .geometry-car::after { right: 10px; }
+        .geometry-car .car-window { position: absolute; top: 8px; left: 15px; width: 35px; height: 16px; background: linear-gradient(135deg, #e1f5fe 0%, #81d4fa 60%, #0277bd 100%); border-radius: 10px 10px 0 0; box-shadow: inset 0 2px 2px rgba(255,255,255,0.5); border: 1px solid #01579b; }
+
+        /* 3. 🚀 火箭 */
+        .geometry-rocket { position: relative; width: 40px; height: 55px; background: linear-gradient(to right, #eceff1 0%, #b0bec5 50%, #78909c 100%); border-radius: 5px; box-shadow: inset 2px 0 5px rgba(255,255,255,0.5), inset -2px 0 5px rgba(0,0,0,0.3), 0 4px 6px rgba(0,0,0,0.3); display: flex; justify-content: center; }
+        .geometry-rocket::before { content: ''; position: absolute; top: -30px; left: -10px; width: 0; height: 0; border-left: 30px solid transparent; border-right: 30px solid transparent; border-bottom: 35px solid #e53935; border-radius: 2px; filter: drop-shadow(0 -2px 2px rgba(0,0,0,0.2)); }
+        .geometry-rocket::after { content: ''; position: absolute; top: 10px; width: 100%; height: 5px; background-color: #e53935; box-shadow: 0 2px 2px rgba(0,0,0,0.2); }
+        .geometry-rocket .rocket-fin { position: absolute; bottom: 5px; width: 18px; height: 25px; background-color: #b71c1c; border-radius: 3px; box-shadow: 0 2px 2px rgba(0,0,0,0.3); }
+        .geometry-rocket .rocket-fin-left { left: -15px; transform: skewY(-15deg); } .geometry-rocket .rocket-fin-right { right: -15px; transform: skewY(15deg); }
+        .geometry-rocket .rocket-nozzle { position: absolute; bottom: -8px; width: 25px; height: 10px; background-color: #424242; border-radius: 0 0 5px 5px; background: linear-gradient(to bottom, #212121, #000); }
+
+        /* 4. 🐢 盾臂龜 (深綠色) */
+        .geometry-tortoise { position: relative; width: 85px; height: 50px; background: radial-gradient(ellipse at 50% 20%, #66bb6a 0%, #2e7d32 60%, #1b5e20 100%); border-radius: 45% 45% 10px 10px; box-shadow: inset 0 2px 10px rgba(255,255,255,0.3), inset 0 -5px 15px rgba(0,0,0,0.5), 0 5px 8px rgba(0,0,0,0.4); overflow: visible; }
+        .geometry-tortoise::after { content: ''; position: absolute; top: 10px; left: 10px; width: calc(100% - 20px); height: calc(100% - 20px); border-radius: 40% 40% 5px 5px; background-image: repeating-linear-gradient(135deg, rgba(0,0,0,0.1) 0px, rgba(0,0,0,0.1) 2px, transparent 2px, transparent 8px), repeating-linear-gradient(45deg, rgba(0,0,0,0.1) 0px, rgba(0,0,0,0.1) 2px, transparent 2px, transparent 8px); box-shadow: inset 10px 10px 20px rgba(255,255,255,0.15), inset -10px -10px 20px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.2); }
+        .geometry-tortoise .tortoise-head { position: absolute; left: -18px; top: 12px; width: 28px; height: 22px; background: radial-gradient(circle at 70% 50%, #81c784 0%, #4caf50 50%, #33691e 100%); border-radius: 12px 6px 6px 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.4); z-index: -1; }
+        .geometry-tortoise .tortoise-head::before { content: ''; position: absolute; left: 5px; top: 6px; width: 5px; height: 6px; background-color: #212121; border-radius: 50%; }
+        .geometry-tortoise .tortoise-leg { position: absolute; bottom: -3px; width: 15px; height: 18px; background: linear-gradient(to bottom, #388e3c, #1b5e20); border-radius: 8px 8px 3px 3px; box-shadow: 0 3px 3px rgba(0,0,0,0.4); z-index: -1; }
+        .geometry-tortoise .tortoise-leg::after { content: ''; position: absolute; bottom: 2px; left: 2px; width: calc(100% - 4px); height: 5px; background-color: rgba(0, 0, 0, 0.3); border-radius: 2px; }
+        .geometry-tortoise .tortoise-leg-front { left: 12px; transform: rotate(5deg); } .geometry-tortoise .tortoise-leg-back { right: 12px; transform: rotate(-5deg); }
+    </style>
+</head>
+<body>
+
+    <div id="simulation-container">
+        <div id="height-scale"></div>
+        <div id="pole"></div>
+        <div id="magnets-area"></div>
+        
+        <div id="avatar-container">
+            <div id="avatar-geometry"></div>
+            <div id="avatar-base-magnet"></div>
+        </div>
+
+        <div id="records-area"></div>
+
+        <div id="force-label">向上推力</div>
+        <div id="force-meter-wrapper">
+            <div id="scale-marks"><span>0</span><span>20</span><span>40</span><span>60</span><span>80</span><span style="color:#e53935;">100</span></div>
+            <div id="force-meter-container"><div id="force-bar"></div><div class="meter-lines"></div></div>
+        </div>
+    </div>
+
+    <div id="controls">
+        <h2>🐸 磁力視覺實驗室</h2>
+        
+        <div class="control-group" style="background-color: #fff9c4; padding: 10px; border-radius: 8px;">
+            <label><b>✨ 選擇實驗主角：</b></label>
+            <select id="avatar-select" onchange="changeAvatar()">
+                <option value="frog">跳跳蛙</option>
+                <option value="car">跑車</option>
+                <option value="rocket">火箭</option>
+                <option value="tortoise">盾臂龜</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label><b>磁鐵數量 (含主角)：</b></label>
+            <select id="magnet-count" onchange="initSimulation()">
+                <option value="2">2 粒</option>
+                <option value="3" selected>3 粒</option>
+                <option value="4">4 粒</option>
+                <option value="5">5 粒</option>
+                <option value="6">6 粒</option>
+                <option value="7">7 粒</option>
+            </select>
+        </div>
+
+        <div id="magnet-settings"></div>
+
+        <div class="record-controls">
+            <button class="btn-jump" onclick="autoJump()">🚀 自動壓下並跳躍</button>
+            <button class="btn-record" onclick="recordLastJump()">📝 記錄本次跳躍高度</button>
+            <div class="sub-btn-group">
+                <button class="btn-undo" onclick="undoRecord()">↩️ 復原</button>
+                <button class="btn-clear" onclick="clearRecords()">🗑️ 清除線</button>
+                <button class="btn-reset" onclick="resetSimulation()">🔄 重設</button>
+            </div>
+        </div>
+
+        <div id="author-footer">
+            程式設計者：陳奇恩老師
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // ★ 基礎網頁防護機制 (防拷貝/防查看原始碼) ★
+        // ==========================================
+        // 1. 禁用滑鼠右鍵選單
+        document.addEventListener('contextmenu', event => event.preventDefault());
+
+        // 2. 禁用鍵盤開發者快捷鍵 (F12, Ctrl+U, Ctrl+Shift+I, Ctrl+C 等)
+        document.addEventListener('keydown', function(e) {
+            // 阻擋 F12
+            if (e.key === 'F12') {
+                e.preventDefault();
+                return false;
+            }
+            // 阻擋 Ctrl+U (原始碼), Ctrl+S (儲存), Ctrl+C (複製), Ctrl+P (列印)
+            if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S' || e.key === 'c' || e.key === 'C' || e.key === 'p' || e.key === 'P')) {
+                e.preventDefault();
+                return false;
+            }
+            // 阻擋 Ctrl+Shift+I / J / C (開發者工具)
+            if (e.ctrlKey && e.shiftKey && (e.key === 'i' || e.key === 'I' || e.key === 'j' || e.key === 'J' || e.key === 'c' || e.key === 'C')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // ==========================================
+        // 實驗室主程式
+        // ==========================================
+        const simContainer = document.getElementById('simulation-container');
+        const magnetsArea = document.getElementById('magnets-area');
+        const avatarContainer = document.getElementById('avatar-container');
+        const avatarGeometry = document.getElementById('avatar-geometry');
+        const avatarBaseMagnet = document.getElementById('avatar-base-magnet');
+        const forceBar = document.getElementById('force-bar');
+        const settingsArea = document.getElementById('magnet-settings');
+        const recordsArea = document.getElementById('records-area');
+        const heightScaleDiv = document.getElementById('height-scale');
+
+        const avatarData = {
+            'frog': { name: '跳跳蛙', color: '#4caf50', cssClass: 'geometry-frog', innerHtml: '<div class="frog-eye-pupil pupil-left"></div><div class="frog-eye-pupil pupil-right"></div><div class="frog-leg frog-leg-left"></div><div class="frog-leg frog-leg-right"></div>' },
+            'car': { name: '跑車', color: '#e53935', cssClass: 'geometry-car', innerHtml: '<div class="car-window"></div>' },
+            'rocket': { name: '火箭', color: '#607d8b', cssClass: 'geometry-rocket', innerHtml: '<div class="rocket-fin rocket-fin-left"></div><div class="rocket-fin rocket-fin-right"></div><div class="rocket-nozzle"></div>' },
+            'tortoise': { name: '盾臂龜', color: '#2e7d32', cssClass: 'geometry-tortoise', innerHtml: '<div class="tortoise-head"></div><div class="tortoise-leg tortoise-leg-front"></div><div class="tortoise-leg tortoise-leg-back"></div>' }
+        };
+
+        const GRAVITY = 0.6; const MAGNETIC_K = 6000; const DAMPING = 0.94; const THICKNESS = 24; const BASE_Y = 30;       
+
+        let magnets = []; let isDragging = false; let topIndex = 0; 
+
+        const recordColors = ['#e53935', '#8e24aa', '#3949ab', '#039be5', '#00897b', '#43a047', '#fb8c00', '#6d4c41'];
+        let jumpRecords = []; let isJumping = false; let startJumpY = 0; let peakY = 0; let lastValidPeakY = 0; 
+
+        function changeAvatar() {
+            const selectedType = document.getElementById('avatar-select').value;
+            const data = avatarData[selectedType];
+            
+            avatarGeometry.className = ''; avatarGeometry.innerHTML = '';
+            avatarGeometry.className = data.cssClass; avatarGeometry.innerHTML = data.innerHtml;
+            document.getElementById('force-label').innerHTML = `${data.name}向上<br>總推力`;
+            
+            const topLabel = document.getElementById(`label-${topIndex}`);
+            if (topLabel) {
+                topLabel.innerText = `${data.name} (最頂部)`;
+                const topConfigDiv = topLabel.parentElement;
+                if(topConfigDiv) {
+                    topConfigDiv.style.border = `2px solid ${data.color}`;
+                    topConfigDiv.style.backgroundColor = selectedType === 'tortoise' ? '#e8f5e9' : selectedType === 'frog' ? '#e8f5e9' : selectedType === 'car' ? '#ffebee' : '#eceff1';
+                }
+            }
+        }
+
+        function drawHeightScale() {
+            heightScaleDiv.innerHTML = '';
+            for (let i = 0; i <= 55; i += 5) {
+                let yPos = BASE_Y + i * 10;
+                let mark = document.createElement('div'); mark.className = 'scale-mark'; mark.style.bottom = yPos + 'px';
+                let label = document.createElement('div'); label.className = 'scale-label'; label.style.bottom = yPos + 'px'; label.innerText = i;
+                heightScaleDiv.appendChild(mark); heightScaleDiv.appendChild(label);
+            }
+        }
+
+        function initSimulation() {
+            const count = parseInt(document.getElementById('magnet-count').value);
+            magnets = []; magnetsArea.innerHTML = ''; settingsArea.innerHTML = '<h3>調整磁極方向 (由上到下)</h3>';
+            topIndex = count - 1;
+            const selectedType = document.getElementById('avatar-select').value;
+            const data = avatarData[selectedType];
+
+            for (let i = 0; i < count; i++) {
+                let flip = (i % 2 !== 0) ? -1 : 1;
+                magnets.push({ y: BASE_Y + i * 50, v: 0, flip: flip });
+                if (i !== topIndex) {
+                    let magDiv = document.createElement('div'); magDiv.id = `mag-dom-${i}`; magDiv.className = 'magnet'; magnetsArea.appendChild(magDiv);
+                }
+            }
+
+            for (let i = count - 1; i >= 0; i--) {
+                let name = i === 0 ? "磁鐵 1 (最底部)" : (i === topIndex ? `${data.name} (最頂部)` : `磁鐵 ${i+1}`);
+                let flip = magnets[i].flip;
+                let btnClass = flip === 1 ? "" : "s-btn";
+                let btnText = flip === 1 ? "上方 N / 下方 S" : "上方 S / 下方 N";
+
+                let configDiv = document.createElement('div'); configDiv.className = 'magnet-config';
+                if (i === topIndex) {
+                    configDiv.style.border = `2px solid ${data.color}`;
+                    configDiv.style.backgroundColor = selectedType === 'tortoise' ? '#e8f5e9' : selectedType === 'frog' ? '#e8f5e9' : selectedType === 'car' ? '#ffebee' : '#eceff1';
+                }
+                configDiv.innerHTML = `<span id="label-${i}">${name}</span><button id="btn-${i}" class="${btnClass}" onclick="togglePole(${i})">${btnText}</button>`;
+                settingsArea.appendChild(configDiv);
+            }
+
+            lastValidPeakY = 0; updateDOM();
+        }
+
+        function togglePole(index) {
+            magnets[index].flip *= -1; 
+            for (let i = 0; i < magnets.length; i++) {
+                let btn = document.getElementById(`btn-${i}`);
+                if(btn) { btn.className = magnets[i].flip === 1 ? "" : "s-btn"; btn.innerText = magnets[i].flip === 1 ? "上方 N / 下方 S" : "上方 S / 下方 N"; }
+            }
+            updateDOM(); for(let i=1; i<=topIndex; i++) magnets[i].v += 0.1; 
+        }
+
+        function resetSimulation() { document.getElementById('magnet-count').value = "3"; clearRecords(); initSimulation(); changeAvatar(); }
+
+        function autoJump() {
+            if (isDragging || isJumping) return; 
+            for (let i = 1; i <= topIndex; i++) { magnets[i].y = BASE_Y + i * THICKNESS; magnets[i].v = 0; }
+            updateDOM();
+        }
+
+        function updateDOM() {
+            for (let i = 0; i < magnets.length; i++) {
+                if (i === topIndex) {
+                    avatarContainer.style.bottom = magnets[i].y + 'px';
+                    let isBottomS = (magnets[i].flip === 1);
+                    avatarBaseMagnet.className = isBottomS ? 'bg-s' : 'bg-n';
+                    avatarBaseMagnet.innerText = isBottomS ? '底部 S 極' : '底部 N 極';
+                } else {
+                    let dom = document.getElementById(`mag-dom-${i}`);
+                    if (dom) {
+                        dom.style.bottom = magnets[i].y + 'px';
+                        if (magnets[i].flip === 1) dom.innerHTML = '<div class="magnet-half bg-n">N</div><div class="magnet-half bg-s">S</div>';
+                        else dom.innerHTML = '<div class="magnet-half bg-s">S</div><div class="magnet-half bg-n">N</div>';
+                    }
+                }
+            }
+        }
+
+        function recordLastJump() {
+            if (lastValidPeakY > 0) {
+                let color = recordColors[jumpRecords.length % recordColors.length];
+                jumpRecords.push({ y: lastValidPeakY, color: color }); updateRecordsDOM(); lastValidPeakY = 0; 
+            } else { alert("請先壓下主角（或按自動跳躍）讓牠跳躍一次，再按記錄喔！"); }
+        }
+
+        function undoRecord() { if (jumpRecords.length > 0) { jumpRecords.pop(); updateRecordsDOM(); } }
+        function clearRecords() { jumpRecords = []; updateRecordsDOM(); }
+
+        function updateRecordsDOM() {
+            recordsArea.innerHTML = '';
+            jumpRecords.forEach((rec, idx) => {
+                let div = document.createElement('div'); div.className = 'jump-record-line'; div.style.bottom = rec.y + 'px'; div.style.borderColor = rec.color; div.style.color = rec.color;
+                let scaleValue = ((rec.y - BASE_Y) / 10).toFixed(1);
+                div.innerHTML = `<div class="jump-record-badge" style="color: ${rec.color}; border: 1px solid ${rec.color}">第 ${idx + 1} 跳 (${scaleValue})</div>`;
+                recordsArea.appendChild(div);
+            });
+        }
+
+        function handleDrag(clientY) {
+            if (!isDragging) return;
+            const rect = simContainer.getBoundingClientRect(); let newY = rect.bottom - clientY - 30;
+            if (newY > 560) newY = 560;
+            magnets[topIndex].y = newY; magnets[topIndex].v = 0; updateDOM();
+        }
+
+        avatarContainer.addEventListener('mousedown', (e) => { isDragging = true; e.preventDefault(); });
+        document.addEventListener('mouseup', () => { isDragging = false; });
+        document.addEventListener('mousemove', (e) => { handleDrag(e.clientY); });
+
+        avatarContainer.addEventListener('touchstart', (e) => { isDragging = true; }, { passive: false });
+        document.addEventListener('touchend', () => { isDragging = false; });
+        document.addEventListener('touchmove', (e) => { if (isDragging && e.touches.length > 0) { handleDrag(e.touches[0].clientY); e.preventDefault(); } }, { passive: false });
+
+        function physicsLoop() {
+            let avatarMagneticForce = 0; let topAvatar = magnets[topIndex];
+
+            if (!isDragging) {
+                if (topAvatar.v > 0.5) { 
+                    if (!isJumping) { isJumping = true; startJumpY = topAvatar.y; peakY = topAvatar.y; }
+                    if (topAvatar.y > peakY) peakY = topAvatar.y; 
+                } else if (isJumping && topAvatar.v <= 0) { 
+                    if (peakY - startJumpY > 15) { lastValidPeakY = peakY; }
+                    isJumping = false;
+                }
+            } else { isJumping = false; }
+
+            for (let i = 1; i < magnets.length; i++) {
+                let netForce = -GRAVITY; let currentMagnetUpwardMagForce = 0;
+
+                for (let j = 0; j < magnets.length; j++) {
+                    if (i === j) continue;
+                    let distance = magnets[i].y - magnets[j].y; let absDist = Math.abs(distance);
+                    if (absDist < THICKNESS) absDist = THICKNESS;
+                    let repel = (magnets[i].flip !== magnets[j].flip) ? 1 : -1;
+                    let forceMag = MAGNETIC_K / (absDist * absDist);
+
+                    if (distance > 0) { netForce += repel * forceMag; currentMagnetUpwardMagForce += repel * forceMag; } 
+                    else { netForce -= repel * forceMag; currentMagnetUpwardMagForce -= repel * forceMag; }
+                }
+
+                if (i === topIndex) avatarMagneticForce = currentMagnetUpwardMagForce;
+
+                if (!isDragging || i !== topIndex) {
+                    magnets[i].v += netForce; magnets[i].v *= DAMPING; magnets[i].y += magnets[i].v;
+                }
+            }
+
+            let forcePercent = Math.max(0, (avatarMagneticForce / 80) * 100); 
+            if (forcePercent > 100) forcePercent = 100;
+            forceBar.style.height = forcePercent + '%';
+
+            for (let iter = 0; iter < 10; iter++) { 
+                for (let i = 1; i < magnets.length; i++) {
+                    if (magnets[i].y < magnets[i-1].y + THICKNESS) {
+                        let overlap = (magnets[i-1].y + THICKNESS) - magnets[i].y;
+                        if (i === 1) { magnets[i].y += overlap; if (magnets[i].v < 0) magnets[i].v = 0; } 
+                        else {
+                            magnets[i].y += overlap / 2; magnets[i-1].y -= overlap / 2;
+                            let avgV = (magnets[i].v + magnets[i-1].v) / 2; magnets[i].v = avgV; magnets[i-1].v = avgV;
+                        }
+                    }
+                }
+                if (topAvatar.y > 560) { topAvatar.y = 560; if(topAvatar.v > 0) topAvatar.v *= -0.5; }
+            }
+
+            if (!isDragging) updateDOM(); requestAnimationFrame(physicsLoop);
+        }
+
+        drawHeightScale(); initSimulation(); changeAvatar(); physicsLoop();
+    </script>
+</body>
+</html>
